@@ -3,6 +3,7 @@
 # python detect_blinks.py --shape-predictor shape_predictor_68_face_landmarks.dat
 
 # import the necessary packages
+import speech_recognition as sr
 from scipy.spatial import distance as dist
 import imutils
 from imutils import face_utils
@@ -14,7 +15,31 @@ import argparse
 import time
 import dlib
 import cv2
+import pyaudio
+import wave
+from pynput import keyboard
 
+
+
+paused = False    # global to track if the audio is paused
+def on_press(key):
+	global paused
+	print (key)
+	if key == keyboard.Key.space:
+		r = sr.Recognizer()
+		with sr.Microphone() as source:
+			print("Say something!")
+			audio=r.listen(source)
+			print("you said: " + r.recognize_google(audio))
+			if r.recognize_google(audio)=="stop":
+				paused=True
+			else:
+				paused=False
+	return False
+
+def callback(in_data, frame_count, time_info, status):
+    data = wf.readframes(frame_count)
+    return (data, pyaudio.paContinue)
 
 def eye_aspect_ratio(eye):
 	# compute the euclidean distances between the two sets of
@@ -43,7 +68,7 @@ args = vars(ap.parse_args())
 # define two constants, one for the eye aspect ratio to indicate
 # blink and then a second constant for the number of consecutive
 # frames the eye must be below the threshold
-EYE_AR_THRESH = 0.3
+EYE_AR_THRESH = 0.27
 EYE_AR_CONSEC_FRAMES = 48
 
 # initialize the frame counters and the total number of blinks
@@ -119,17 +144,34 @@ while True:
 
 		# otherwise, the eye aspect ratio is not below the blink
 		# threshold
-		else:
+		#else:
 			# if the eyes were closed for a sufficient number of
 			# then increment the total number of blinks
-			if COUNTER >= EYE_AR_CONSEC_FRAMES:
-				TOTAL += 1
-				playsound('censor-beep-3.mp3')
+		#	if COUNTER >= EYE_AR_CONSEC_FRAMES:
+		#		TOTAL += 1
+		#		playsound('censor-beep-3.mp3')
 
 			# reset the eye frame counter
-			COUNTER = 0
+		#	COUNTER = 0
 		if COUNTER >= EYE_AR_CONSEC_FRAMES:
-				playsound('censor-beep-3.mp3')
+			#playsound('censor-beep-10.mp3')
+			wf = wave.open('censor-beep-10.wav', 'rb')
+			# instantiate PyAudio
+			p = pyaudio.PyAudio()
+			stream = p.open(format=p.get_format_from_width(wf.getsampwidth()),channels=wf.getnchannels(),rate=wf.getframerate(),output=True,stream_callback=callback)
+			stream.start_stream()
+			paused=False
+			while stream.is_active() or paused==False:
+				with keyboard.Listener(on_press=on_press) as listener:
+					listener.join()
+					time.sleep(0.1)
+				if paused==True:
+					COUNTER=0
+					stream.stop_stream()
+					break
+			stream.close()
+			wf.close()
+			p.terminate()
 
 		# draw the total number of blinks on the frame along with
 		# the computed eye aspect ratio for the frame
