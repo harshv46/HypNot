@@ -31,7 +31,7 @@ def on_press(key):
 			print("Say something!")
 			audio=r.listen(source)
 			print("you said: " + r.recognize_google(audio))
-			if r.recognize_google(audio)=="stop":
+			if r.recognize_google(audio)=="turn off":
 				paused=True
 			else:
 				paused=False
